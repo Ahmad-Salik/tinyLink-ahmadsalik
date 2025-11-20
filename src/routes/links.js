@@ -1,5 +1,5 @@
 import express from "express";
-import { createLink, listLinks, getLink, deleteLink } from "../controllers/linksController.js";
+const { createLink, listLinks, getLink, deleteLink } = links;
 const router = express.Router();
 
 router.post("/", createLink);
