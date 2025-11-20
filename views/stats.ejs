@@ -1,0 +1,12 @@
+<%- include("layout", { title: "Link Stats" }) %>
+
+<h1>Statistics for "<%= code %>"</h1>
+
+<div class="box">
+  <p><strong>Original URL:</strong> <a href="<%= url %>" target="_blank"><%= url %></a></p>
+  <p><strong>Total Clicks:</strong> <%= clicks %></p>
+  <p><strong>Last Clicked:</strong> <%= last_clicked ? last_clicked : "Never" %></p>
+  <p><strong>Created At:</strong> <%= created_at %></p>
+</div>
+
+<p><a href="/">← Back to Dashboard</a></p>
