@@ -1,138 +1,112 @@
-<%- include("layout", { title: "TinyLink Dashboard" }) %>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Tiny Link Dashboard</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
 
-<h1>TinyLink</h1>
+<h1>Tiny Link Dashboard</h1>
 
-<!-- Create Link Form -->
+<!-- Link Creation Form -->
 <form id="createForm">
-  <h3>Create a New Short Link</h3>
+    <label>Destination URL</label>
+    <input type="text" id="url" placeholder="https://example.com" required>
 
-  <label>Long URL:</label>
-  <input type="text" id="urlInput" placeholder="https://example.com" required />
+    <label>Custom Code (optional)</label>
+    <input type="text" id="customCode" placeholder="myCode123">
 
-  <label>Custom Code (optional):</label>
-  <input type="text" id="codeInput" placeholder="abc123" />
-
-  <button type="submit">Create Link</button>
-
-  <p id="formMessage"></p>
+    <button type="submit">Create Short Link</button>
 </form>
 
-<hr />
+<!-- Links Table -->
+<table>
+    <thead>
+        <tr>
+            <th>Short URL</th>
+            <th>Destination</th>
+            <th>Clicks</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
 
-<!-- Search -->
-<h3>Your Links</h3>
-<input type="text" id="searchInput" placeholder="Search by code or URL..." />
-
-<div id="linksContainer">Loading...</div>
+    <tbody id="linksTable"></tbody>
+</table>
 
 <script>
-// Load all links
-async function loadLinks() {
-  const container = document.getElementById("linksContainer");
-  container.innerHTML = "Loading...";
+    // Fetch all links and display them
+    async function loadLinks() {
+        const res = await fetch("/api/links");
+        const links = await res.json();
 
-  const res = await fetch("/api/links");
-  const links = await res.json();
+        const tbody = document.getElementById("linksTable");
+        tbody.innerHTML = "";
 
-  if (links.length === 0) {
-    container.innerHTML = "<p>No links yet. Create your first one!</p>";
-    return;
-  }
+        links.forEach(link => {
+            const row = document.createElement("tr");
 
-  renderTable(links);
-}
+            row.innerHTML = `
+                <td>
+                    <a href="/${link.code}" target="_blank">
+                        ${window.location.origin}/${link.code}
+                    </a>
+                </td>
+                <td class="truncate">${link.url}</td>
+                <td>${link.clicks}</td>
+                <td>
+                    <a href="/stats/${link.code}">
+                        <button>Stats</button>
+                    </a>
+                    <button onclick="deleteLink('${link.code}')">Delete</button>
+                </td>
+            `;
 
-// Render table of links
-function renderTable(links) {
-  const container = document.getElementById("linksContainer");
+            tbody.appendChild(row);
+        });
+    }
 
-  let html = `
-    <table>
-      <tr>
-        <th>Code</th>
-        <th>URL</th>
-        <th>Clicks</th>
-        <th>Last Click</th>
-        <th>Actions</th>
-      </tr>
-  `;
+    // Create new link
+    document.getElementById("createForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-  links.forEach(link => {
-    html += `
-      <tr>
-        <td><a href="/${link.code}" target="_blank">${link.code}</a></td>
-        <td class="truncate">${link.url}</td>
-        <td>${link.clicks}</td>
-        <td>${link.last_clicked ? new Date(link.last_clicked).toLocaleString() : "-"}</td>
-        <td>
-          <button onclick="copyLink('${link.code}')">Copy</button>
-          <button onclick="deleteLink('${link.code}')">Delete</button>
-          <a href="/stats/${link.code}">Stats</a>
-        </td>
-      </tr>
-    `;
-  });
+        const url = document.getElementById("url").value.trim();
+        const customCode = document.getElementById("customCode").value.trim();
 
-  html += "</table>";
-  container.innerHTML = html;
-}
+        const body = customCode
+            ? { url, code: customCode }
+            : { url };
 
-// Copy button
-function copyLink(code) {
-  const shortUrl = `${window.location.origin}/${code}`;
-  navigator.clipboard.writeText(shortUrl);
-  alert("Copied: " + shortUrl);
-}
+        const res = await fetch("/api/links", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
 
-// Delete button
-async function deleteLink(code) {
-  const ok = confirm("Delete this link?");
-  if (!ok) return;
+        if (res.ok) {
+            alert("Short link created!");
+            loadLinks();
+        } else {
+            alert("Error creating link");
+        }
+    });
 
-  await fetch(`/api/links/${code}`, { method: "DELETE" });
-  loadLinks();
-}
+    // Delete link
+    async function deleteLink(code) {
+        if (!confirm("Delete this link?")) return;
 
-// Create link form
-document.getElementById("createForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+        const res = await fetch(`/api/links/${code}`, { method: "DELETE" });
 
-  const url = document.getElementById("urlInput").value;
-  const code = document.getElementById("codeInput").value;
-  const msg = document.getElementById("formMessage");
+        if (res.ok) {
+            loadLinks();
+        } else {
+            alert("Error deleting link");
+        }
+    }
 
-  const res = await fetch("/api/links", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url, code })
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    msg.textContent = data.error;
-    msg.style.color = "red";
-  } else {
-    msg.textContent = `Created: ${data.code}`;
-    msg.style.color = "green";
+    // Initial load
     loadLinks();
-  }
-});
-
-// Search filter
-document.getElementById("searchInput").addEventListener("input", async (e) => {
-  const term = e.target.value.toLowerCase();
-  const res = await fetch("/api/links");
-  const links = await res.json();
-
-  const filtered = links.filter(l =>
-    l.code.toLowerCase().includes(term) ||
-    l.url.toLowerCase().includes(term)
-  );
-
-  renderTable(filtered);
-});
-
-// Initial load
-loadLinks();
 </script>
+
+</body>
+</html>
