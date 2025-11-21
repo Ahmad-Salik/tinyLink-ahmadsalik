@@ -1,7 +1,7 @@
 // src/controllers/linksController.js
 import { pool } from "../db.js";
-import { isValidUrl } from "../utils/validateUrl.js";
-import { generateCode } from "../utils/generateCode.js";
+import { isValidUrl } from "./src/utils/validateUrl.js";
+import { generateCode } from "./src/utils/generatecode.js";
 
 /*
 |--------------------------------------------------------------------------
